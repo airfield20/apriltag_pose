@@ -1,0 +1,20 @@
+<launch>
+<!--	<param name="/usb_cam/pixel_format" value="yuyv"/>  -->
+
+<!--	<node pkg="usb_cam" name="usb_cam" type="usb_cam_node"/>		-->
+	<!-- <param name="camera_name"	value="cam0"/> -->
+
+	<node pkg="april_tag" name="april_tag_left" type="april_tag_node" output="screen">
+		<remap from="/camera/image_raw" to="cam0/image_raw"/>
+		<!-- <remap from="/camera/intrinsics" to="/cam0/intrinsics"/> -->
+		<!-- focal_length_px: camera focal length in pixels. 
+		700 works well forlate 2013 macbook pro retina 13in -->
+<!--		<param name="focal_length_px" value="700"/>  -->
+		<param name="camera" value="false" />
+		<!-- tag_size_cm: size of edge of the black frame in cms -->
+		<param name="tag_size_cm" value="20"/>
+
+		<rosparam file="/home/mohito/catkin_ws/bags/d_calibVI.yaml"/> 
+	</node>
+
+</launch>

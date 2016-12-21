@@ -1,0 +1,42 @@
+<launch>
+
+	<!-- <node pkg="rosbag" type="play" name="player" args="-l /home/mohito/catkin_ws/bags/run1.bag"/> -->
+
+
+	<node pkg="april_tag" name="april_tag_left" type="april_tag_node" output="screen">
+		<!-- remaps -->
+		<remap from="/camera/image_raw" to="cam0/image_raw"/>
+		<remap from="/april_tag_debug/output_video" to="/cam0/output_video"/>
+		<remap from="/april_tags" to="/cam0/april_tags"/>
+		<!-- <remap from="/tf" to="/tf_AT_cam0" /> -->
+
+		<param name="camera" value="false" />
+		<!-- tag_size_cm: size of edge of the black frame in cms -->
+		<param name="tag_size_cm" value="23.9"/>
+
+		<rosparam file="/home/mohito/catkin_ws/bags/d_calibVI.yaml"/> 
+	</node>
+	
+
+	<!-- Rovio node -->
+	<include file="$(find rovio)/launch/rovio_node.launch"/>
+
+	<!-- Pose Manager Node -->
+	<!-- <include file="$(find pose_manager)/launch/pose_manager.launch"/> -->
+
+
+
+	<!-- <node pkg="april_tag" name="april_tag_right" type="april_tag_node" output="screen"> -->
+		<!-- remaps -->
+<!-- 		<remap from="/camera/image_raw" to="/cam1/image_raw"/>
+		<remap from="/april_tag_debug/output_video" to="/cam1/output_video"/>
+		<remap from="/april_tags" to="/cam1/april_tags"/>
+ -->
+		<!-- <param name="camera" value="true" /> -->
+		<!-- tag_size_cm: size of edge of the black frame in cms -->
+		<!-- <param name="tag_size_cm" value="23.7"/> -->
+
+		<!-- <rosparam file="/home/mohito/catkin_ws/bags/d_calibVI.yaml"/>  -->
+	<!-- </node> -->
+
+</launch>
