@@ -240,9 +240,10 @@ public:
 
     tf::Transform tCW, tWC, tW;
     tCW.setOrigin(CrCW);
-    tf::Matrix3x3(qCW).getRPY(roll,pitch,yaw);
+    tCW.setRotation(qCW);
+    // tf::Matrix3x3(qCW).getRPY(roll,pitch,yaw);
     // tCW.setRotation(tf::Quaternion(yaw, 0, 0));
-    tCW.setRotation(tf::createQuaternionFromRPY(roll-PI/2.2,pitch,yaw));
+    // tCW.setRotation(tf::createQuaternionFromRPY(roll-PI/2.2,pitch,yaw));
     
     tWC = tCW.inverse();
     tf::Vector3 WrWC = tWC.getOrigin();             // Vector of Camera w.r.t world (april tag) in world frame

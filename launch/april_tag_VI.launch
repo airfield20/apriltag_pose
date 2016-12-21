@@ -19,7 +19,7 @@
 	
 
 	<!-- Rovio node -->
-	<include file="$(find rovio)/launch/rovio_node.launch"/>
+	<!-- <include file="$(find rovio)/launch/rovio_node.launch"/> -->
 
 	<!-- Pose Manager Node -->
 	<!-- <include file="$(find pose_manager)/launch/pose_manager.launch"/> -->
