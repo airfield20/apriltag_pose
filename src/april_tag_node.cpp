@@ -207,7 +207,6 @@ public:
   }
 
   void convert_to_msg(AprilTags::TagDetection& detection, const cv_bridge::CvImagePtr& cv_ptr) {
-  // april_tag::AprilTag convert_to_msg(AprilTags::TagDetection& detection, int width, int height) {
     // recovering the relative pose of camera w.r.t. the tag:
 
     // NOTE: for this to be accurate, it is necessary to use the
@@ -240,7 +239,6 @@ public:
     tf::Vector3 CrCW = tf::Vector3(tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2));   // Vector of world w.r.t. camera in camera frame
 
     double yaw, pitch, roll;
-    // wRo_to_euler(rotation, yaw, pitch, roll);
 
     tf::Transform tCW, tWC, tW;
     tCW.setOrigin(CrCW);
@@ -254,68 +252,19 @@ public:
     tf::Quaternion qWC = tWC.getRotation();         // Rotation of Camera w.r.t world (april tag)
     send_transform_msg( WrWC, qWC, cv_ptr);
     // send_transform_msg( WrWC, qWC * tf::createQuaternionFromRPY(PI/2.2,0,0), cv_ptr);
-
-    // Create World coordinate at origin of april tag
-    // tW.setOrigin(tf::Vector3(0,0,1));
-    // tW.setRotation(tf::createQuaternionFromRPY(PI/2,0,0));
-
-    // static tf::TransformBroadcaster br;
-    // br.sendTransform(tf::StampedTransform(tW, ros::Time::now(), "map", "world"));
-    // tf::Matrix3x3 (qWC).getRPY(roll,pitch,yaw);
-
-    // send_transform_msg( tf::Vector3(tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2)), Q);      
-
-    // For creating Tag messages to echo on april_tags rostopic 
-    // Rotation of camera frame w.r.t. the april tag
-    // rotation.transposeInPlace();    
-
-    // Eigen::Matrix3d F;
-    // F <<
-    //   1, 0, 0,
-    //   0, -1, 0,
-    //   0, 0, 1;
-
-    // Eigen::Matrix3d fixed_rot = F*rotation;
-    // double yaw, pitch, roll;
-    // wRo_to_euler(fixed_rot, yaw, pitch, roll);
-
-
-    // tag_msg.id = detection.id;
-    // tag_msg.hamming_distance = detection.hammingDistance;
-    // tag_msg.distance = translation.norm() * 100.0;
-    // tag_msg.z = translation(0) * 100.0; // depth from camera
-    // tag_msg.x = translation(1) * 100.0; // horizontal displacement (camera pov right = +ve)
-    // tag_msg.y = translation(2) * 100.0; // vertical displacement
-    // tag_msg.yaw = yaw;
-    // tag_msg.pitch = pitch;
-    // tag_msg.roll = roll;
-
-    // return tag_msg;
   }
 
   void processCvImage(cv_bridge::CvImagePtr cv_ptr)  {
     cv::Mat image_gray, image_ud;
     cv::cvtColor(cv_ptr->image, image_gray, CV_BGR2GRAY);
-    // cv::undistort(image_gray, image_ud, intrinsic_, distCoeff_);
 
     vector<AprilTags::TagDetection> detections = tag_detector->extractTags(image_gray);
 
-    // vector<AprilTags::TagDetection> detections = tag_detector->extractTags(image_ud);
-    vector<april_tag::AprilTag> tag_msgs;
-
     for (int i=0; i<detections.size(); i++) {
       if (detections[i].id != 8)  continue;
-      convert_to_msg(detections[i], cv_ptr);
-      // convert_to_msg(detections[i], cv_ptr->image.cols, cv_ptr->image.rows);
-      // detections[i].draw(cv_ptr->image);
-      // tag_msgs.push_back(convert_to_msg(detections[i], cv_ptr->image.cols, cv_ptr->image.rows));
-    }
 
-    // if(detections.size() > 0) { // take this out if you want absence notificaiton
-    //   april_tag::AprilTagList tag_list;
-    //   tag_list.april_tags = tag_msgs;
-    //   tag_list_pub.publish(tag_list);
-    // }
+      convert_to_msg(detections[i], cv_ptr);
+    }
   }
 
 
@@ -344,7 +293,6 @@ public:
 
     if (show_debug_image) {
       // Update GUI Window
-      // cv::imshow(OPENCV_WINDOW, image_ud);
       cv::imshow(OPENCV_WINDOW, cv_ptr->image);
       cv::waitKey(3);
     }
@@ -352,8 +300,6 @@ public:
 
     std::cout << (end-start).toSec() << std::endl;
 
-    // Output modified video stream
-    // image_pub_.publish(cv_ptr->toImageMsg());
   }
 };
 
