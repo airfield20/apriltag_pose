@@ -21,6 +21,8 @@
 #include "april_tag/AprilTagList.h" // rosmsg
 
 
+#define DOWNSAMPLE_FACTOR     2
+
 static const std::string OPENCV_WINDOW = "Image window";
 
 const double PI = 3.14159265358979323846;
@@ -71,6 +73,8 @@ class AprilTagNode
   AprilTags::TagCodes tag_codes;
   double camera_focal_length_x; // in pixels. late 2013 macbookpro retina = 700
   double camera_focal_length_y; // in pixels
+  double camera_center_x;       // in pixels
+  double camera_center_y;       // in pixels
   double tag_size; // tag side length of frame in meters 
   bool  show_debug_image;
 
@@ -83,6 +87,8 @@ public:
     tag_detector(NULL),
     camera_focal_length_y(700),
     camera_focal_length_x(700),
+    camera_center_x(360),
+    camera_center_y(360),
     tag_size(0.29), // 1 1/8in marker = 0.29m
     show_debug_image(false)
   {
@@ -108,10 +114,10 @@ public:
     {
       XmlRpc::XmlRpcValue intrinsics_cam0;
       loadSuccess &= private_node_handle.getParam("cam0/intrinsics", intrinsics_cam0);  // camera_intrinsics
-      intrinsic_.at<double>(0,0) = (double)intrinsics_cam0[0];
-      intrinsic_.at<double>(1,1) = (double)intrinsics_cam0[1];
-      intrinsic_.at<double>(0,2) = (double)intrinsics_cam0[2];
-      intrinsic_.at<double>(1,2) = (double)intrinsics_cam0[3];
+      intrinsic_.at<double>(0,0) = (double)intrinsics_cam0[0] / DOWNSAMPLE_FACTOR;
+      intrinsic_.at<double>(1,1) = (double)intrinsics_cam0[1] / DOWNSAMPLE_FACTOR;
+      intrinsic_.at<double>(0,2) = (double)intrinsics_cam0[2] / DOWNSAMPLE_FACTOR;
+      intrinsic_.at<double>(1,2) = (double)intrinsics_cam0[3] / DOWNSAMPLE_FACTOR;
 
       // Radial Distortion coeffs (from Marco Karrer) [k1, k2, p1, p2, k3]
       double cam0_distCoeffs[5] = { -0.293099583176669, 0.101589055552550, -0.00004886151975809833, 0.00009521834372139675, -0.018417213000905 }; 
@@ -124,10 +130,10 @@ public:
     } else {
       XmlRpc::XmlRpcValue intrinsics_cam1;
       loadSuccess &= private_node_handle.getParam("cam1/intrinsics", intrinsics_cam1);  // camera_intrinsics
-      intrinsic_.at<double>(0,0) = (double)intrinsics_cam1[0];
-      intrinsic_.at<double>(1,1) = (double)intrinsics_cam1[1];
-      intrinsic_.at<double>(0,2) = (double)intrinsics_cam1[2];
-      intrinsic_.at<double>(1,2) = (double)intrinsics_cam1[3];
+      intrinsic_.at<double>(0,0) = (double)intrinsics_cam1[0] / DOWNSAMPLE_FACTOR;
+      intrinsic_.at<double>(1,1) = (double)intrinsics_cam1[1] / DOWNSAMPLE_FACTOR;
+      intrinsic_.at<double>(0,2) = (double)intrinsics_cam1[2] / DOWNSAMPLE_FACTOR;
+      intrinsic_.at<double>(1,2) = (double)intrinsics_cam1[3] / DOWNSAMPLE_FACTOR;
 
       // Radial Distortion coeffs (from Marco Karrer) [k1, k2, p1, p2, k3]
       double cam1_distCoeffs[5] = { -0.346781208941426, 0.171638088490686, 2.122745013661727e-04, -2.605449368212942e-04, -0.041879348897746 }; 
@@ -141,6 +147,8 @@ public:
 
     private_node_handle.param<double>("focal_length_px", camera_focal_length_x, intrinsic_.at<double>(0,0) );
     private_node_handle.param<double>("focal_length_py", camera_focal_length_y, intrinsic_.at<double>(1,1) );
+    private_node_handle.param<double>("center_px", camera_center_x, intrinsic_.at<double>(0,2) );
+    private_node_handle.param<double>("center_py", camera_center_y, intrinsic_.at<double>(1,2) );
 
     private_node_handle.param<double>("tag_size_cm", tag_size, 2.9);
     private_node_handle.param<bool>("show_debug_image", show_debug_image, false);
@@ -149,7 +157,7 @@ public:
     tag_size = tag_size / 100.0; // library takes input in meters
 
     cv::initUndistortRectifyMap(intrinsic_, distCoeff_, cv::Mat::eye(3,3,cv::DataType<double>::type),
-                                  intrinsic_, cv::Size(752 / 2, 480 / 2), CV_16SC2, map1, map2);
+                                  intrinsic_, cv::Size(752 / DOWNSAMPLE_FACTOR, 480 / DOWNSAMPLE_FACTOR), CV_16SC2, map1, map2);
 
     cout << "got focal length " << camera_focal_length_x << endl;
     cout << "got tag size " << tag_size << endl;
@@ -217,14 +225,14 @@ public:
     Eigen::Matrix3d rotation;
     cv::Mat rvec, tvec;
 
-    int width = cv_ptr->image.cols;
-    int height = cv_ptr->image.rows;
+    // int width = cv_ptr->image.cols;
+    // int height = cv_ptr->image.rows;
 
     detection.getRelativeTranslationRotation(tag_size, 
                                              camera_focal_length_x, 
                                              camera_focal_length_y, 
-                                             width / 2, 
-                                             height / 2,
+                                             camera_center_x, 
+                                             camera_center_y,
                                              translation, 
                                              rotation,
                                              rvec, tvec);
@@ -272,7 +280,7 @@ public:
     cv_bridge::CvImagePtr cv_ptr;
     cv::Mat image_ud, image_down;
 
-    ros::Time start = ros::Time::now();
+    // ros::Time start = ros::Time::now();
 
     try
     {
@@ -283,7 +291,7 @@ public:
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
-    cv::pyrDown(cv_ptr->image, image_down, cv::Size(cv_ptr->image.cols/2, cv_ptr->image.rows/2)); 
+    cv::pyrDown(cv_ptr->image, image_down, cv::Size(cv_ptr->image.cols/DOWNSAMPLE_FACTOR, cv_ptr->image.rows/DOWNSAMPLE_FACTOR)); 
     cv::remap(image_down, image_ud, map1, map2, CV_INTER_LINEAR);
 
     // cv::undistort(cv_ptr->image, image_ud, intrinsic_, distCoeff_);
@@ -296,9 +304,9 @@ public:
       cv::imshow(OPENCV_WINDOW, cv_ptr->image);
       cv::waitKey(3);
     }
-    ros::Time end = ros::Time::now();
+    // ros::Time end = ros::Time::now();
 
-    std::cout << (end-start).toSec() << std::endl;
+    // std::cout << (end-start).toSec() << std::endl;
 
   }
 };
