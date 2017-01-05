@@ -87,7 +87,7 @@ public:
     show_debug_image(false)
   {
     // Subscrive to input video feed and publish output video feed
-    image_sub_ = it_.subscribe("/camera/image_raw", 1, &AprilTagNode::imageCb, this);
+    image_sub_ = it_.subscribe("/camera/image_raw", 10, &AprilTagNode::imageCb, this);
     image_pub_ = it_.advertise("/april_tag_debug/output_video", 1);
     // tag_list_pub = nh_.advertise<april_tag::AprilTagList>("/april_tags", 100);
     transform_pub = nh_.advertise<geometry_msgs::TransformStamped>("/tf_cam0", 10);
@@ -149,7 +149,7 @@ public:
     tag_size = tag_size / 100.0; // library takes input in meters
 
     cv::initUndistortRectifyMap(intrinsic_, distCoeff_, cv::Mat::eye(3,3,cv::DataType<double>::type),
-                                  intrinsic_, cv::Size(752, 480), CV_16SC2, map1, map2);
+                                  intrinsic_, cv::Size(752 / 2, 480 / 2), CV_16SC2, map1, map2);
 
     cout << "got focal length " << camera_focal_length_x << endl;
     cout << "got tag size " << tag_size << endl;
@@ -170,7 +170,7 @@ public:
     }
   }
 
-  void send_transform_msg(const tf::Vector3& tvec, const tf::Quaternion& Q) const {
+  void send_transform_msg(const tf::Vector3& tvec, const tf::Quaternion& Q, const cv_bridge::CvImagePtr& cv_ptr) const {
     static tf::TransformBroadcaster br;
 #if 0
     tf::Transform transform;
@@ -191,8 +191,8 @@ public:
 
     geometry_msgs::TransformStamped pose_trans;
 
-    pose_trans.header.stamp = ros::Time::now();
-    pose_trans.header.frame_id = "world";
+    pose_trans.header.stamp = cv_ptr->header.stamp;
+    pose_trans.header.frame_id = "world_AT";
     if (!rightCam)
       pose_trans.child_frame_id = "cam0";
     else
@@ -206,7 +206,7 @@ public:
 #endif
   }
 
-  void convert_to_msg(AprilTags::TagDetection& detection, int width, int height) {
+  void convert_to_msg(AprilTags::TagDetection& detection, const cv_bridge::CvImagePtr& cv_ptr) {
   // april_tag::AprilTag convert_to_msg(AprilTags::TagDetection& detection, int width, int height) {
     // recovering the relative pose of camera w.r.t. the tag:
 
@@ -217,6 +217,10 @@ public:
     Eigen::Vector3d translation;
     Eigen::Matrix3d rotation;
     cv::Mat rvec, tvec;
+
+    int width = cv_ptr->image.cols;
+    int height = cv_ptr->image.rows;
+
     detection.getRelativeTranslationRotation(tag_size, 
                                              camera_focal_length_x, 
                                              camera_focal_length_y, 
@@ -248,8 +252,8 @@ public:
     tWC = tCW.inverse();
     tf::Vector3 WrWC = tWC.getOrigin();             // Vector of Camera w.r.t world (april tag) in world frame
     tf::Quaternion qWC = tWC.getRotation();         // Rotation of Camera w.r.t world (april tag)
-    send_transform_msg( WrWC, qWC);
-    // send_transform_msg( WrWC, qWC * tf::createQuaternionFromRPY(PI/2.2,0,0));
+    send_transform_msg( WrWC, qWC, cv_ptr);
+    // send_transform_msg( WrWC, qWC * tf::createQuaternionFromRPY(PI/2.2,0,0), cv_ptr);
 
     // Create World coordinate at origin of april tag
     // tW.setOrigin(tf::Vector3(0,0,1));
@@ -293,6 +297,7 @@ public:
     cv::Mat image_gray, image_ud;
     cv::cvtColor(cv_ptr->image, image_gray, CV_BGR2GRAY);
     // cv::undistort(image_gray, image_ud, intrinsic_, distCoeff_);
+
     vector<AprilTags::TagDetection> detections = tag_detector->extractTags(image_gray);
 
     // vector<AprilTags::TagDetection> detections = tag_detector->extractTags(image_ud);
@@ -300,8 +305,9 @@ public:
 
     for (int i=0; i<detections.size(); i++) {
       if (detections[i].id != 8)  continue;
-      convert_to_msg(detections[i], cv_ptr->image.cols, cv_ptr->image.rows);
-      detections[i].draw(cv_ptr->image);
+      convert_to_msg(detections[i], cv_ptr);
+      // convert_to_msg(detections[i], cv_ptr->image.cols, cv_ptr->image.rows);
+      // detections[i].draw(cv_ptr->image);
       // tag_msgs.push_back(convert_to_msg(detections[i], cv_ptr->image.cols, cv_ptr->image.rows));
     }
 
@@ -315,7 +321,10 @@ public:
 
   void imageCb(const sensor_msgs::ImageConstPtr& msg)  {
     cv_bridge::CvImagePtr cv_ptr;
-    cv::Mat image_ud;
+    cv::Mat image_ud, image_down;
+
+    ros::Time start = ros::Time::now();
+
     try
     {
       cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
@@ -325,11 +334,12 @@ public:
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
-
-    cv::remap(cv_ptr->image, image_ud, map1, map2, CV_INTER_LINEAR);
+    cv::pyrDown(cv_ptr->image, image_down, cv::Size(cv_ptr->image.cols/2, cv_ptr->image.rows/2)); 
+    cv::remap(image_down, image_ud, map1, map2, CV_INTER_LINEAR);
 
     // cv::undistort(cv_ptr->image, image_ud, intrinsic_, distCoeff_);
     cv_ptr->image = image_ud;
+
     processCvImage(cv_ptr);
 
     if (show_debug_image) {
@@ -338,8 +348,12 @@ public:
       cv::imshow(OPENCV_WINDOW, cv_ptr->image);
       cv::waitKey(3);
     }
+    ros::Time end = ros::Time::now();
+
+    std::cout << (end-start).toSec() << std::endl;
+
     // Output modified video stream
-    image_pub_.publish(cv_ptr->toImageMsg());
+    // image_pub_.publish(cv_ptr->toImageMsg());
   }
 };
 
