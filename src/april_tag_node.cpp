@@ -21,41 +21,17 @@
 #include "april_tag/AprilTagList.h" // rosmsg
 
 
-#define DOWNSAMPLE_FACTOR     2
+#define DOWNSAMPLE_FACTOR     2     // 1 or 2 only
 
 static const std::string OPENCV_WINDOW = "Image window";
-
+ 
 const double PI = 3.14159265358979323846;
 const double TWOPI = 2.0*PI;
 
-/**
- * Normalize angle to be within the interval [-pi,pi].
- */
-inline double standardRad(double t) {
-  if (t >= 0.) {
-    t = fmod(t+PI, TWOPI) - PI;
-  } else {
-    t = fmod(t-PI, -TWOPI) + PI;
-  }
-  return t;
-}
-
-inline double radToDeg(double rads) {
-  return ((rads * 180)/PI );
-}
 
 /**
- * Convert rotation matrix to Euler angles
- */
-void wRo_to_euler(const Eigen::Matrix3d& wRo, double& yaw, double& pitch, double& roll) {
-    yaw = standardRad(atan2(wRo(1,0), wRo(0,0)));
-    double c = cos(yaw);
-    double s = sin(yaw);
-    pitch = standardRad(atan2(-wRo(2,0), wRo(0,0)*c + wRo(1,0)*s));
-    roll  = standardRad(atan2(wRo(0,2)*s - wRo(1,2)*c, -wRo(0,1)*s + wRo(1,1)*c));
-}
-
-
+*   CLASS DEFINITION
+*/
 class AprilTagNode
 {
   ros::NodeHandle nh_;
@@ -291,8 +267,14 @@ public:
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
-    cv::pyrDown(cv_ptr->image, image_down, cv::Size(cv_ptr->image.cols/DOWNSAMPLE_FACTOR, cv_ptr->image.rows/DOWNSAMPLE_FACTOR)); 
-    cv::remap(image_down, image_ud, map1, map2, CV_INTER_LINEAR);
+
+    if (DOWNSAMPLE_FACTOR != 1)
+    {
+      cv::pyrDown(cv_ptr->image, image_down, cv::Size(cv_ptr->image.cols/DOWNSAMPLE_FACTOR, cv_ptr->image.rows/DOWNSAMPLE_FACTOR)); 
+      cv::remap(image_down, image_ud, map1, map2, CV_INTER_LINEAR);   
+    } else {
+      cv::remap(cv_ptr->image, image_ud, map1, map2, CV_INTER_LINEAR);
+    }
 
     // cv::undistort(cv_ptr->image, image_ud, intrinsic_, distCoeff_);
     cv_ptr->image = image_ud;
@@ -311,6 +293,9 @@ public:
   }
 };
 
+/**
+*   MAIN FUNCTION
+*/
 int main(int argc, char** argv)  {
   ros::init(argc, argv, "april_tag_node");
   AprilTagNode atn;
