@@ -47,6 +47,7 @@ class AprilTagNode
   cv::Mat map1, map2;
   // allow configurations for these:  
   AprilTags::TagCodes tag_codes;
+  int tag_id_;
   double camera_focal_length_x; // in pixels. late 2013 macbookpro retina = 700
   double camera_focal_length_y; // in pixels
   double camera_center_x;       // in pixels
@@ -54,7 +55,7 @@ class AprilTagNode
   double tag_size; // tag side length of frame in meters 
   bool  show_debug_image;
 
-  bool rightCam;      // For stereo camera: false is left, true is right. false for monocular
+  int rightCam;      // For stereo camera: false is left, true is right. false for monocular
 
 public:
   AprilTagNode() : 
@@ -69,16 +70,15 @@ public:
     show_debug_image(false)
   {
     // Subscrive to input video feed and publish output video feed
-    image_sub_ = it_.subscribe("/camera/image_raw", 10, &AprilTagNode::imageCb, this);
+    image_sub_ = it_.subscribe("/camera/image_raw", 1, &AprilTagNode::imageCb, this);
     image_pub_ = it_.advertise("/april_tag_debug/output_video", 1);
     // tag_list_pub = nh_.advertise<april_tag::AprilTagList>("/april_tags", 100);
-    transform_pub = nh_.advertise<geometry_msgs::TransformStamped>("/tf_cam0", 10);
     
     // Use a private node handle so that multiple instances of the node can
     // be run simultaneously while using different parameters.
     ros::NodeHandle private_node_handle("~");
 
-    private_node_handle.param<bool>("camera", rightCam, false);
+    private_node_handle.param<int>("camera", rightCam, 0);
 
     intrinsic_ = cv::Mat::eye(3,3,cv::DataType<double>::type);
     distCoeff_ = cv::Mat::zeros(5,1,cv::DataType<double>::type);
@@ -103,8 +103,10 @@ public:
       distCoeff_.at<double>(3,0) = (double)cam0_distCoeffs[3];
       distCoeff_.at<double>(4,0) = (double)cam0_distCoeffs[4];
 
+      transform_pub = nh_.advertise<geometry_msgs::TransformStamped>("/tf_cam0", 10);
     } else {
       XmlRpc::XmlRpcValue intrinsics_cam1;
+
       loadSuccess &= private_node_handle.getParam("cam1/intrinsics", intrinsics_cam1);  // camera_intrinsics
       intrinsic_.at<double>(0,0) = (double)intrinsics_cam1[0] / DOWNSAMPLE_FACTOR;
       intrinsic_.at<double>(1,1) = (double)intrinsics_cam1[1] / DOWNSAMPLE_FACTOR;
@@ -119,8 +121,10 @@ public:
       distCoeff_.at<double>(3,0) = (double)cam1_distCoeffs[3];
       distCoeff_.at<double>(4,0) = (double)cam1_distCoeffs[4];
 
+      transform_pub = nh_.advertise<geometry_msgs::TransformStamped>("/tf_cam1", 10);
     }
 
+    private_node_handle.param<int>("tag_id", tag_id_, 8);
     private_node_handle.param<double>("focal_length_px", camera_focal_length_x, intrinsic_.at<double>(0,0) );
     private_node_handle.param<double>("focal_length_py", camera_focal_length_y, intrinsic_.at<double>(1,1) );
     private_node_handle.param<double>("center_px", camera_center_x, intrinsic_.at<double>(0,2) );
@@ -176,7 +180,7 @@ public:
     geometry_msgs::TransformStamped pose_trans;
 
     pose_trans.header.stamp = cv_ptr->header.stamp;
-    pose_trans.header.frame_id = "world_AT";
+    pose_trans.header.frame_id = "world";
     if (!rightCam)
       pose_trans.child_frame_id = "cam0";
     else
@@ -245,7 +249,7 @@ public:
     vector<AprilTags::TagDetection> detections = tag_detector->extractTags(image_gray);
 
     for (int i=0; i<detections.size(); i++) {
-      if (detections[i].id != 8)  continue;
+      if (detections[i].id != tag_id_)  continue;
 
       convert_to_msg(detections[i], cv_ptr);
     }

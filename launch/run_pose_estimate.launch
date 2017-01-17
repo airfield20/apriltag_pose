@@ -1,0 +1,35 @@
+<launch>
+    <!--Detector Node-->
+    <include file="$(find april_tag)/launch/april_tag_VI.launch">
+        <arg name="camera" value="0"/>
+    </include>
+    <include file="$(find april_tag)/launch/april_tag_VI.launch">
+        <arg name="camera" value="1"/>
+    </include>
+
+    <!-- ROVIO -->
+    <include file="$(find rovio)/launch/rovio_node.launch">
+        <arg name="camera" value="0"/>
+    </include>
+    <include file="$(find rovio)/launch/rovio_node.launch">
+        <arg name="camera" value="1"/>
+    </include>
+
+    <!-- TF Listener -->
+    <include file="$(find trajectory_mapper)/launch/tf_listener.launch">
+        <arg name="camera" value="0"/>
+    </include>
+    <include file="$(find trajectory_mapper)/launch/tf_listener.launch">
+        <arg name="camera" value="1"/>
+    </include>
+
+    <!-- Path Mapper -->
+    <include file="$(find trajectory_mapper)/launch/path_mapper_node.launch">
+        <arg name="camera" value="0"/>
+    </include>
+    <include file="$(find trajectory_mapper)/launch/path_mapper_node.launch">
+        <arg name="camera" value="1"/>
+    </include>
+
+
+</launch>
