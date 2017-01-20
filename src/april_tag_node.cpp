@@ -88,7 +88,7 @@ public:
 
     if ( !rightCam )    
     {
-      XmlRpc::XmlRpcValue intrinsics_cam0;
+      XmlRpc::XmlRpcValue intrinsics_cam0, distCoeff_cam0;
       loadSuccess &= private_node_handle.getParam("cam0/intrinsics", intrinsics_cam0);  // camera_intrinsics
       intrinsic_.at<double>(0,0) = (double)intrinsics_cam0[0] / DOWNSAMPLE_FACTOR;
       intrinsic_.at<double>(1,1) = (double)intrinsics_cam0[1] / DOWNSAMPLE_FACTOR;
@@ -96,16 +96,18 @@ public:
       intrinsic_.at<double>(1,2) = (double)intrinsics_cam0[3] / DOWNSAMPLE_FACTOR;
 
       // Radial Distortion coeffs (from Marco Karrer) [k1, k2, p1, p2, k3]
-      double cam0_distCoeffs[5] = { -0.293099583176669, 0.101589055552550, -0.00004886151975809833, 0.00009521834372139675, -0.018417213000905 }; 
-      distCoeff_.at<double>(0,0) = (double)cam0_distCoeffs[0];
-      distCoeff_.at<double>(1,0) = (double)cam0_distCoeffs[1];
-      distCoeff_.at<double>(2,0) = (double)cam0_distCoeffs[2];
-      distCoeff_.at<double>(3,0) = (double)cam0_distCoeffs[3];
-      distCoeff_.at<double>(4,0) = (double)cam0_distCoeffs[4];
+      // double cam0_distCoeffs[5] = { -0.293099583176669, 0.101589055552550, -0.00004886151975809833, 0.00009521834372139675, -0.018417213000905 }; 
+      loadSuccess &= private_node_handle.getParam("cam0/distortion_coeffs", distCoeff_cam0);
+
+      distCoeff_.at<double>(0,0) = (double)distCoeff_cam0[0];
+      distCoeff_.at<double>(1,0) = (double)distCoeff_cam0[1];
+      distCoeff_.at<double>(2,0) = (double)distCoeff_cam0[2];
+      distCoeff_.at<double>(3,0) = (double)distCoeff_cam0[3];
+      distCoeff_.at<double>(4,0) = (double)distCoeff_cam0[4];
 
       transform_pub = nh_.advertise<geometry_msgs::TransformStamped>("/tf_cam0", 10);
     } else {
-      XmlRpc::XmlRpcValue intrinsics_cam1;
+      XmlRpc::XmlRpcValue intrinsics_cam1, distCoeff_cam1;
 
       loadSuccess &= private_node_handle.getParam("cam1/intrinsics", intrinsics_cam1);  // camera_intrinsics
       intrinsic_.at<double>(0,0) = (double)intrinsics_cam1[0] / DOWNSAMPLE_FACTOR;
@@ -114,12 +116,15 @@ public:
       intrinsic_.at<double>(1,2) = (double)intrinsics_cam1[3] / DOWNSAMPLE_FACTOR;
 
       // Radial Distortion coeffs (from Marco Karrer) [k1, k2, p1, p2, k3]
-      double cam1_distCoeffs[5] = { -0.346781208941426, 0.171638088490686, 2.122745013661727e-04, -2.605449368212942e-04, -0.041879348897746 }; 
-      distCoeff_.at<double>(0,0) = (double)cam1_distCoeffs[0];
-      distCoeff_.at<double>(1,0) = (double)cam1_distCoeffs[1];
-      distCoeff_.at<double>(2,0) = (double)cam1_distCoeffs[2];
-      distCoeff_.at<double>(3,0) = (double)cam1_distCoeffs[3];
-      distCoeff_.at<double>(4,0) = (double)cam1_distCoeffs[4];
+      // double cam1_distCoeffs[5] = { -0.346781208941426, 0.171638088490686, 2.122745013661727e-04, -2.605449368212942e-04, -0.041879348897746 }; 
+      
+      loadSuccess &= private_node_handle.getParam("cam1/distortion_coeffs", distCoeff_cam1);
+
+      distCoeff_.at<double>(0,0) = (double)distCoeff_cam1[0];
+      distCoeff_.at<double>(1,0) = (double)distCoeff_cam1[1];
+      distCoeff_.at<double>(2,0) = (double)distCoeff_cam1[2];
+      distCoeff_.at<double>(3,0) = (double)distCoeff_cam1[3];
+      distCoeff_.at<double>(4,0) = (double)distCoeff_cam1[4];
 
       transform_pub = nh_.advertise<geometry_msgs::TransformStamped>("/tf_cam1", 10);
     }
@@ -250,7 +255,7 @@ public:
 
     for (int i=0; i<detections.size(); i++) {
       if (detections[i].id != tag_id_)  continue;
-
+      std::cout << "Camera " << rightCam << " detects tag" << std:: endl;
       convert_to_msg(detections[i], cv_ptr);
     }
   }

@@ -2,12 +2,13 @@
 
 	<!-- <node pkg="rosbag" type="play" name="player" args="-l /home/mohito/catkin_ws/bags/run1.bag"/> -->
 	<arg name="camera" default="0"/>
+	<arg name="VI" default="0"/>
 
-	<node pkg="april_tag" name="april_tag_cam$(arg camera)" type="april_tag_node" output="screen">
+	<node pkg="april_tag" name="april_tag_vi$(arg VI)" type="april_tag_node">
 		<!-- remaps -->
-		<remap from="/camera/image_raw" to="/cam$(arg camera)/image_raw"/>
-		<remap from="/april_tag_debug/output_video" to="/cam$(arg camera)/output_video"/>
-		<remap from="/april_tags" to="/cam$(arg camera)/april_tags"/>
+		<remap from="/camera/image_raw" to="/vi$(arg VI)/cam$(arg camera)/image_raw"/>
+		<remap from="/april_tag_debug/output_video" to="/vi$(arg VI)/cam$(arg camera)/output_video"/>
+		<remap from="/april_tags" to="/vi$(arg VI)/cam$(arg camera)/april_tags"/>
 		<!-- <remap from="/tf" to="/tf_AT_cam0" /> -->
 
 		<param name="camera" value="$(arg camera)" />
@@ -15,7 +16,10 @@
 		<param name="tag_size_cm" value="23.9"/>
 		<param name="tag_id" value="12" />
 
-		<rosparam file="/home/mohito/catkin_ws/bags/d_calibVI.yaml"/> 
+		<rosparam file="/home/mohito/catkin_ws/bags/calibrations/d_calibVI$(arg VI).yaml"/> 
+
+		<remap from="tf_cam$(arg camera)" to="tf_vi$(arg VI)_cam$(arg camera)" />
+
 	</node>
 
 	<!-- Rovio node -->
