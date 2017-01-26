@@ -1,24 +1,25 @@
 <launch>
 
 	<!-- <node pkg="rosbag" type="play" name="player" args="-l /home/mohito/catkin_ws/bags/run1.bag"/> -->
-	<arg name="camera" default="0"/>
-	<arg name="VI" default="0"/>
+  <arg name="UAV" default="" />
+  <arg name="camera" default="0" />
+  <arg name="VI" default="0" />
 
-	<node pkg="april_tag" name="april_tag_vi$(arg VI)" type="april_tag_node">
+	<node pkg="april_tag" name="april_tag_$(arg UAV)" type="april_tag_node">
 		<!-- remaps -->
-		<remap from="/camera/image_raw" to="/vi$(arg VI)/cam$(arg camera)/image_raw"/>
-		<remap from="/april_tag_debug/output_video" to="/vi$(arg VI)/cam$(arg camera)/output_video"/>
-		<remap from="/april_tags" to="/vi$(arg VI)/cam$(arg camera)/april_tags"/>
+		<remap from="/camera/image_raw" to="/$(arg UAV)/cam$(arg camera)/image_raw"/>
+		<remap from="/april_tag_debug/output_video" to="/$(arg UAV)/cam$(arg camera)/output_video"/>
+		<remap from="/april_tags" to="/$(arg UAV)/cam$(arg camera)/april_tags"/>
 		<!-- <remap from="/tf" to="/tf_AT_cam0" /> -->
 
-		<param name="camera" value="$(arg camera)" />
+		<param name="camera" value="0" />
 		<!-- tag_size_cm: size of edge of the black frame in cms -->
 		<param name="tag_size_cm" value="23.9"/>
-		<param name="tag_id" value="12" />
+		<param name="tag_id" value="3" />
 
-		<rosparam file="/home/mohito/catkin_ws/bags/calibrations/d_calibVI$(arg VI).yaml"/> 
+		<rosparam file="/home/mohito/catkin_ws/src/april_tag/cfg/$(arg UAV)_dwn.yaml"/> 
 
-		<remap from="tf_cam$(arg camera)" to="tf_vi$(arg VI)_cam$(arg camera)" />
+		<remap from="tf_cam0" to="/$(arg UAV)/tf_cam$(arg camera)" />
 
 	</node>
 
