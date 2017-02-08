@@ -13,7 +13,7 @@
     <!-- </include> -->
 
     <!-- ROVIO -->
-    <include file="$(find rovio)/launch/rovio_node.launch">
+    <include file="$(find rovio)/launch/rovio_pose_estimate.launch">
         <arg name="UAV" value="$(arg uav)"/>
         <arg name="camera" value="$(arg cam)"/>
     </include>
@@ -21,20 +21,40 @@
         <!-- <arg name="VI" value="1"/> -->
     <!-- </include> -->
 
-    <!-- TF Listener -->
-    <include file="$(find trajectory_mapper)/launch/tf_listener.launch">
-        <arg name="UAV" value="$(arg uav)"/>
-        <arg name="camera" value="$(arg cam)"/>
+    <!-- TF Broadcaster -->
+
+    <include file="$(find trajectory_mapper)/launch/tf_broadcaster_globalorigin.launch">
     </include>
+
+    <include file="$(find trajectory_mapper)/launch/tf_broadcaster.launch">
+        <arg name="UAV" value="$(arg uav)" />
+        <arg name="to" value="cam0"/>
+        <arg name="from" value="imu"/>
+        <arg name="camera" value="0"/>
+    </include>
+    <include file="$(find trajectory_mapper)/launch/tf_broadcaster.launch">
+        <arg name="UAV" value="$(arg uav)" />
+        <arg name="to" value="body"/>
+        <arg name="from" value="cam0"/>
+        <arg name="camera" value="0"/>
+    </include>
+
+    <!-- TF Listener -->
+    <!-- <include file="$(find trajectory_mapper)/launch/tf_listener.launch"> -->
+        <!-- <arg name="UAV" value="$(arg uav)"/> -->
+        <!-- <arg name="camera" value="$(arg cam)"/> -->
+        <!-- <arg name="from" value="vicon"/> -->
+        <!-- <arg name="to" value="$(arg uav)/body"/> -->
+    <!-- </include> -->
     <!-- <include file="$(find trajectory_mapper)/launch/tf_listener.launch"> -->
         <!-- <arg name="VI" value="1"/> -->
     <!-- </include> -->
 
     <!-- Path Mapper -->
-    <include file="$(find trajectory_mapper)/launch/path_mapper_node.launch">
-        <arg name="UAV" value="$(arg uav)"/>
-        <arg name="camera" value="$(arg cam)"/>
-    </include>
+    <!-- <include file="$(find trajectory_mapper)/launch/path_mapper_node.launch"> -->
+        <!-- <arg name="UAV" value="$(arg uav)"/> -->
+        <!-- <arg name="camera" value="$(arg cam)"/> -->
+    <!-- </include> -->
     <!-- <include file="$(find trajectory_mapper)/launch/path_mapper_node.launch"> -->
         <!-- <arg name="VI" value="1"/> -->
     <!-- </include> -->

@@ -4,6 +4,8 @@
 #include <ros/ros.h>
 // #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
+#include <tf_conversions/tf_eigen.h>
+
 // #include <Scalar.h>
 
 #include <image_transport/image_transport.h>
@@ -38,14 +40,13 @@ class AprilTagNode
   image_transport::ImageTransport it_;
   image_transport::Subscriber image_sub_;
   image_transport::Publisher image_pub_;
-  // ros::Publisher tag_list_pub;
 
   ros::Publisher transform_pub;
 
   AprilTags::TagDetector* tag_detector;
   cv::Mat intrinsic_, distCoeff_;
   cv::Mat map1, map2;
-  // allow configurations for these:  
+
   AprilTags::TagCodes tag_codes;
   int tag_id_;
   double camera_focal_length_x; // in pixels. late 2013 macbookpro retina = 700
@@ -69,10 +70,9 @@ public:
     tag_size(0.29), // 1 1/8in marker = 0.29m
     show_debug_image(false)
   {
-    // Subscrive to input video feed and publish output video feed
     image_sub_ = it_.subscribe("/camera/image_raw", 1, &AprilTagNode::imageCb, this);
+
     image_pub_ = it_.advertise("/april_tag_debug/output_video", 1);
-    // tag_list_pub = nh_.advertise<april_tag::AprilTagList>("/april_tags", 100);
     
     // Use a private node handle so that multiple instances of the node can
     // be run simultaneously while using different parameters.
@@ -95,8 +95,6 @@ public:
       intrinsic_.at<double>(0,2) = (double)intrinsics_cam0[2] / DOWNSAMPLE_FACTOR;
       intrinsic_.at<double>(1,2) = (double)intrinsics_cam0[3] / DOWNSAMPLE_FACTOR;
 
-      // Radial Distortion coeffs (from Marco Karrer) [k1, k2, p1, p2, k3]
-      // double cam0_distCoeffs[5] = { -0.293099583176669, 0.101589055552550, -0.00004886151975809833, 0.00009521834372139675, -0.018417213000905 }; 
       loadSuccess &= private_node_handle.getParam("cam0/distortion_coeffs", distCoeff_cam0);
 
       distCoeff_.at<double>(0,0) = (double)distCoeff_cam0[0];
@@ -114,9 +112,6 @@ public:
       intrinsic_.at<double>(1,1) = (double)intrinsics_cam1[1] / DOWNSAMPLE_FACTOR;
       intrinsic_.at<double>(0,2) = (double)intrinsics_cam1[2] / DOWNSAMPLE_FACTOR;
       intrinsic_.at<double>(1,2) = (double)intrinsics_cam1[3] / DOWNSAMPLE_FACTOR;
-
-      // Radial Distortion coeffs (from Marco Karrer) [k1, k2, p1, p2, k3]
-      // double cam1_distCoeffs[5] = { -0.346781208941426, 0.171638088490686, 2.122745013661727e-04, -2.605449368212942e-04, -0.041879348897746 }; 
       
       loadSuccess &= private_node_handle.getParam("cam1/distortion_coeffs", distCoeff_cam1);
 
@@ -138,7 +133,6 @@ public:
     private_node_handle.param<double>("tag_size_cm", tag_size, 2.9);
     private_node_handle.param<bool>("show_debug_image", show_debug_image, false);
 
-    // camera_focal_length_y = camera_focal_length_x; // meh
     tag_size = tag_size / 100.0; // library takes input in meters
 
     cv::initUndistortRectifyMap(intrinsic_, distCoeff_, cv::Mat::eye(3,3,cv::DataType<double>::type),
@@ -163,55 +157,28 @@ public:
     }
   }
 
-  void send_transform_msg(const tf::Vector3& tvec, const tf::Quaternion& Q, const cv_bridge::CvImagePtr& cv_ptr) const {
+  void send_transform_msg(const tf::Transform& Tf, const cv_bridge::CvImagePtr& cv_ptr) const {
     static tf::TransformBroadcaster br;
-#if 0
-    tf::Transform transform;
-    transform.setOrigin( tvec );
-    transform.setRotation(Q);
-    if (!rightCam)
-    {
-      // br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "cam0"));
-      transform_pub.publish(tf::StampedTransform(transform, ros::Time::now(), "world", "cam0"));
-    } else {
-      // br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "cam1"));
-      transform_pub.publish(tf::StampedTransform(transform, ros::Time::now(), "world", "cam1"));
-    }
-#else
-    geometry_msgs::Quaternion pose_quat;
 
-    tf::quaternionTFToMsg(Q, pose_quat);
+    geometry_msgs::Quaternion pose_quat;
+    tf::StampedTransform pose;
+
+    if (!rightCam)
+      pose = tf::StampedTransform(Tf, cv_ptr->header.stamp, "origin", "cam0");
+    else
+      pose = tf::StampedTransform(Tf, cv_ptr->header.stamp, "origin", "cam1");
 
     geometry_msgs::TransformStamped pose_trans;
 
-    pose_trans.header.stamp = cv_ptr->header.stamp;
-    pose_trans.header.frame_id = "world";
-    if (!rightCam)
-      pose_trans.child_frame_id = "cam0";
-    else
-      pose_trans.child_frame_id = "cam1";
-    pose_trans.transform.translation.x = tvec[0];
-    pose_trans.transform.translation.y = tvec[1];
-    pose_trans.transform.translation.z = tvec[2];
-    pose_trans.transform.rotation = pose_quat;
+    tf::transformStampedTFToMsg(pose, pose_trans);
     transform_pub.publish(pose_trans);
     br.sendTransform(pose_trans);
-#endif
   }
 
   void convert_to_msg(AprilTags::TagDetection& detection, const cv_bridge::CvImagePtr& cv_ptr) {
-    // recovering the relative pose of camera w.r.t. the tag:
-
-    // NOTE: for this to be accurate, it is necessary to use the
-    // actual camera parameters here as well as the actual tag size
-    // (m_fx, m_fy, m_px, m_py, m_tagSize)
-
     Eigen::Vector3d translation;
     Eigen::Matrix3d rotation;
     cv::Mat rvec, tvec;
-
-    // int width = cv_ptr->image.cols;
-    // int height = cv_ptr->image.rows;
 
     detection.getRelativeTranslationRotation(tag_size, 
                                              camera_focal_length_x, 
@@ -223,28 +190,13 @@ public:
                                              rvec, tvec);
     april_tag::AprilTag tag_msg;
 
-    tfScalar angle = sqrt( rvec.at<double>(0)*rvec.at<double>(0) + rvec.at<double>(1)*rvec.at<double>(1) + rvec.at<double>(2)*rvec.at<double>(2) );
-    tf::Vector3 axis( rvec.at<double>(0) / angle, 
-                      rvec.at<double>(1) / angle, 
-                      rvec.at<double>(2) / angle);
+    tf::Matrix3x3 rot; tf::Vector3 trans;
+    tf::matrixEigenToTF(rotation, rot);
+    tf::vectorEigenToTF(translation, trans);
 
-    tf::Quaternion qCW(axis, angle);    // Rotation of world w.r.t camera
-    tf::Vector3 CrCW = tf::Vector3(tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2));   // Vector of world w.r.t. camera in camera frame
+    tf::Transform t_tag_cam(rot, trans);
 
-    double yaw, pitch, roll;
-
-    tf::Transform tCW, tWC, tW;
-    tCW.setOrigin(CrCW);
-    tCW.setRotation(qCW);
-    // tf::Matrix3x3(qCW).getRPY(roll,pitch,yaw);
-    // tCW.setRotation(tf::Quaternion(yaw, 0, 0));
-    // tCW.setRotation(tf::createQuaternionFromRPY(roll-PI/2.2,pitch,yaw));
-    
-    tWC = tCW.inverse();
-    tf::Vector3 WrWC = tWC.getOrigin();             // Vector of Camera w.r.t world (april tag) in world frame
-    tf::Quaternion qWC = tWC.getRotation();         // Rotation of Camera w.r.t world (april tag)
-    send_transform_msg( WrWC, qWC, cv_ptr);
-    // send_transform_msg( WrWC, qWC * tf::createQuaternionFromRPY(PI/2.2,0,0), cv_ptr);
+    send_transform_msg(t_tag_cam.inverse(), cv_ptr);
   }
 
   void processCvImage(cv_bridge::CvImagePtr cv_ptr)  {

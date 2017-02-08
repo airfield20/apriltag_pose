@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   message_generation
   tf
+  tf_conversions
 )
 
 ## System dependencies are found with CMake's conventions

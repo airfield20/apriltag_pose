@@ -100,14 +100,6 @@ Eigen::Matrix4d TagDetection::getRelativeTransform(double tag_size, double fx, d
                            0,  0,  1);
   cv::Vec4f distParam(0,0,0,0); // all 0?
   cv::solvePnP(objPts, imgPts, cameraMatrix, distParam, rvec, tvec);
-
-  // Quaternion notation
-  // cv::Vec4f rot_q;
-  // rot_q[0] = sqrt(rvec.at<double>(0)*rvec.at<double>(0) + rvec.at<double>(1)*rvec.at<double>(1) + rvec.at<double>(2)*rvec.at<double>(2));
-  // rot_q[1] = rvec.at<double>(0) / rot_q[0];
-  // rot_q[2] = rvec.at<double>(1) / rot_q[0];
-  // rot_q[3] = rvec.at<double>(2) / rot_q[0];
-
   cv::Matx33d r;
   cv::Rodrigues(rvec, r);
   Eigen::Matrix3d wRo;
